@@ -21,7 +21,11 @@ client = TelegramClient(session_name, api_id, api_hash)
 # Modelo para o endpoint de envio
 class SendMessageRequest(BaseModel):
     chat_id: int
-    text: str
+    text: str = None
+    file_path: str = None  # Caminho local do arquivo
+    file_url: str = None   # URL do arquivo para download
+    caption: str = None    # Legenda para mídia
+    voice_note: bool = False  # Se True, envia áudio como mensagem de voz
 
 # Gerenciamento do ciclo de vida do cliente Telegram
 @asynccontextmanager
@@ -41,7 +45,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-# Handler de recebimento (mantido igual)
+# Handler de recebimento com suporte a mídia
 @client.on(events.NewMessage(incoming=True))
 async def handler(event):
     if not event.is_private:
@@ -49,45 +53,163 @@ async def handler(event):
 
     sender = await event.get_sender()
     
+    # Monta o nome completo
+    first_name = getattr(sender, 'first_name', '')
+    last_name = getattr(sender, 'last_name', '')
+    full_name = f"{first_name} {last_name}".strip() if last_name else first_name
+    
+    # Estrutura básica da mensagem
     msg = {
         "sender_id": event.sender_id,
         "sender_username": getattr(sender, 'username', None),
+        "sender_first_name": first_name,
+        "sender_last_name": last_name,
+        "sender_full_name": full_name,
+        "sender_phone": getattr(sender, 'phone', None),
         "chat_id": event.chat_id,
         "text": event.raw_text,
-        "date": str(event.message.date)
+        "date": str(event.message.date),
+        "message_id": event.message.id,
+        "has_media": bool(event.message.media),
+        "media_type": None,
+        "media_info": {}
     }
+    
+    # Verifica se há mídia na mensagem
+    if event.message.media:
+        # Foto
+        if event.photo:
+            msg["media_type"] = "photo"
+            msg["media_info"] = {
+                "file_id": event.message.photo.id,
+                "access_hash": event.message.photo.access_hash,
+                "file_reference": event.message.photo.file_reference.hex() if event.message.photo.file_reference else None
+            }
+        
+        # Documento (inclui áudio, vídeo, arquivo, etc)
+        elif event.document:
+            doc = event.message.document
+            msg["media_info"] = {
+                "file_id": doc.id,
+                "access_hash": doc.access_hash,
+                "file_reference": doc.file_reference.hex() if doc.file_reference else None,
+                "file_name": None,
+                "mime_type": doc.mime_type,
+                "file_size": doc.size,
+                "duration": None
+            }
+            
+            # Processa atributos do documento
+            for attr in doc.attributes:
+                # Nome do arquivo
+                if hasattr(attr, 'file_name'):
+                    msg["media_info"]["file_name"] = attr.file_name
+                
+                # Áudio
+                if hasattr(attr, 'duration') and hasattr(attr, 'title'):
+                    msg["media_type"] = "audio"
+                    msg["media_info"]["duration"] = attr.duration
+                    msg["media_info"]["title"] = getattr(attr, 'title', None)
+                    msg["media_info"]["performer"] = getattr(attr, 'performer', None)
+                
+                # Vídeo
+                elif hasattr(attr, 'duration') and hasattr(attr, 'w'):
+                    msg["media_type"] = "video"
+                    msg["media_info"]["duration"] = attr.duration
+                    msg["media_info"]["width"] = attr.w
+                    msg["media_info"]["height"] = attr.h
+            
+            # Detecta áudio de voz (voice note)
+            if event.voice:
+                msg["media_type"] = "voice"
+            
+            # Detecta vídeo circular (video note)
+            elif event.video_note:
+                msg["media_type"] = "video_note"
+            
+            # Se não foi identificado como áudio/vídeo, é um documento genérico
+            elif msg["media_type"] is None:
+                msg["media_type"] = "document"
+        
+        # Outros tipos de mídia
+        elif event.message.media:
+            msg["media_type"] = type(event.message.media).__name__
 
     try:
         resp = requests.post(webhook_url, json=msg, timeout=10)
         logging.info(f"Posted to webhook, status {resp.status_code}")
+        logging.info(f"Message data: {msg}")
     except Exception as e:
         logging.error("Erro ao postar no webhook:", exc_info=e)
 
-# Novo endpoint para enviar mensagens
+# Novo endpoint para enviar mensagens (texto, imagem, áudio)
 @app.post("/send-message")
 async def send_message(request: SendMessageRequest):
     """
     Envia uma mensagem para um chat específico via Telegram.
+    Suporta texto, imagens, áudios e vídeos.
     
     Body JSON:
     {
         "chat_id": 123456789,
-        "text": "Sua mensagem aqui"
+        "text": "Sua mensagem aqui",
+        "file_path": "/caminho/para/arquivo.jpg",  // opcional
+        "file_url": "https://exemplo.com/imagem.jpg",  // opcional
+        "caption": "Legenda da imagem",  // opcional
+        "voice_note": false  // true para enviar áudio como mensagem de voz
     }
     """
     try:
-        message = await client.send_message(
-            entity=request.chat_id,
-            message=request.text
-        )
+        file_to_send = None
+        voice_note = request.voice_note
         
-        return {
-            "success": True,
-            "message_id": message.id,
-            "chat_id": request.chat_id,
-            "text": request.text,
-            "date": str(message.date)
-        }
+        # Se tem arquivo local
+        if request.file_path:
+            file_to_send = request.file_path
+        
+        # Se tem URL de arquivo
+        elif request.file_url:
+            file_to_send = request.file_url
+        
+        # Envia com arquivo (imagem, áudio, vídeo, documento)
+        if file_to_send:
+            message = await client.send_file(
+                entity=request.chat_id,
+                file=file_to_send,
+                caption=request.caption or request.text,
+                voice_note=voice_note
+            )
+            
+            return {
+                "success": True,
+                "message_id": message.id,
+                "chat_id": request.chat_id,
+                "text": request.caption or request.text,
+                "has_media": True,
+                "date": str(message.date)
+            }
+        
+        # Envia apenas texto
+        else:
+            if not request.text:
+                raise HTTPException(
+                    status_code=400,
+                    detail="É necessário fornecer 'text', 'file_path' ou 'file_url'"
+                )
+            
+            message = await client.send_message(
+                entity=request.chat_id,
+                message=request.text
+            )
+            
+            return {
+                "success": True,
+                "message_id": message.id,
+                "chat_id": request.chat_id,
+                "text": request.text,
+                "has_media": False,
+                "date": str(message.date)
+            }
     
     except Exception as e:
         logging.error(f"Erro ao enviar mensagem: {e}", exc_info=True)

@@ -1,0 +1,10 @@
+version: "3.8"
+services:
+  telegram_auto:
+    build: .
+    container_name: telegram_auto
+    restart: unless-stopped
+    volumes:
+      - ./meusession.session:/app/meusession.session
+    environment:
+      - PYTHONUNBUFFERED=1
