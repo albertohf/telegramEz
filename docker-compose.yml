@@ -2,9 +2,9 @@
 version: "3.8"
 
 services:
-  telegram_auto:
+  telegramapi:
     build: .
-    container_name: telegram_auto
+    container_name: telegramapi
     restart: unless-stopped
     volumes:
       - ./meusession.session:/app/meusession.session
