@@ -3,7 +3,7 @@ version: "3.8"
 
 services:
   telegramapi:
-    image: telegramapi:latest
+    image: albertohf/telegramapi:latest
     container_name: telegramapi
     restart: unless-stopped
     volumes:
