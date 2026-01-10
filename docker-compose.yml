@@ -3,7 +3,9 @@ version: "3.8"
 
 services:
   telegramapi:
+    build: .
     image: telegramapi:latest
+    container_name: telegramapi
     restart: unless-stopped
     volumes:
       - ./meusession.session:/app/meusession.session
