@@ -1,0 +1,26 @@
+version: "3.8"
+
+services:
+  telegramapi:
+    build: .
+    image: telegramapi:latest
+    container_name: telegramapi
+    restart: unless-stopped
+    volumes:
+      - ./meusession.session:/app/meusession.session
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - eznet
+    labels:
+      - "traefik.enable=true"
+      # URL que será liberada
+      - "traefik.http.routers.telegram-api.rule=Host(`telegramapi.ezhot.com.br`)"
+      - "traefik.http.routers.telegram-api.entrypoints=websecure"
+      - "traefik.http.routers.telegram-api.tls.certresolver=letsencrypt"
+      # Porta interna do container (conforme seu main.py)
+      - "traefik.http.services.telegram-api.loadbalancer.server.port=8000"
+
+networks:
+  eznet:
+    external: true
