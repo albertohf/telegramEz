@@ -1,19 +1,16 @@
-# docker-compose.yml para uso com Traefik
+# docker-compose.yml para uso com Traefik + Portainer
 version: "3.8"
 
 services:
   telegramapi:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: telegramapi
+    image: telegramapi:latest
     restart: unless-stopped
     volumes:
       - ./meusession.session:/app/meusession.session
     environment:
       - PYTHONUNBUFFERED=1
     networks:
-      - eznet # Nome da rede do Traefik
+      - eznet
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.telegram-api.rule=Host(`telegramapi.ezhot.com.br`)"
