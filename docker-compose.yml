@@ -13,7 +13,7 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
     networks:
-      - traefik # Nome da rede do Traefik
+      - eznet # Nome da rede do Traefik
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.telegram-api.rule=Host(`telegramapi.ezhot.com.br`)"
@@ -22,5 +22,5 @@ services:
       - "traefik.http.services.telegram-api.loadbalancer.server.port=8000"
 
 networks:
-  traefik:
+  eznet:
     external: true
