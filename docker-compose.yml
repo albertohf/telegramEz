@@ -1,4 +1,6 @@
+# docker-compose.yml para uso com Traefik
 version: "3.8"
+
 services:
   telegram_auto:
     build: .
@@ -8,3 +10,15 @@ services:
       - ./meusession.session:/app/meusession.session
     environment:
       - PYTHONUNBUFFERED=1
+    networks:
+      - traefik # Nome da rede do Traefik
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.telegram-api.rule=Host(`telegramapi.ezhot.com.br`)"
+      - "traefik.http.routers.telegram-api.entrypoints=websecure"
+      - "traefik.http.routers.telegram-api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.telegram-api.loadbalancer.server.port=8000"
+
+networks:
+  traefik:
+    external: true
