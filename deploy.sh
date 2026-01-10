@@ -13,14 +13,15 @@ else
   echo "ℹ️  Se der erro de 'PermissionDenied' na rede, rode: docker network rm $NETWORK_NAME && docker network create $NETWORK_NAME"
 fi
 
-# 2. Build da imagem
+# 2. Build da imagem (Swarm não faz build automático)
 echo "📦 Construindo imagem Docker..."
 docker build -t telegramapi:latest .
 
-# 3. Subir o container usando docker-compose
-echo "⬆️ Subindo container..."
-docker compose up -d
+# 3. Deploy do Stack no Swarm
+echo "⬆️ Fazendo deploy do Stack no Swarm..."
+docker stack deploy -c docker-compose.yml telegramapi
 
-echo "✨ Tudo pronto! A API deve estar disponível em: https://telegramapi.ezhot.com.br/health"
-echo "📝 Logs do container:"
-docker logs --tail 20 telegramapi
+echo "✨ Tudo pronto! O serviço está subindo no Swarm."
+echo "ℹ️ Verifique o status com: docker service ls | grep telegramapi"
+echo "ℹ️ Verifique os logs com: docker service logs -f telegramapi_telegramapi"
+
