@@ -4,7 +4,7 @@ services:
   telegramapi:
     image: telegramapi:latest
     volumes:
-      - /home/alberto/telegram-auto/meusession.session:/app/meusession.session
+      - /home/alberto/telegram-auto/EzHot.session:/app/EzHot.session
     environment:
       - PYTHONUNBUFFERED=1
     networks:
