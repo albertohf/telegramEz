@@ -11,10 +11,10 @@ import uvicorn
 logging.basicConfig(level=logging.INFO)
 
 # SUBSTITUA com seus valores
-api_id = 37950946
-api_hash = 'acbfa58fccc0c2b66980db6edd84722d'
-session_name = 'meusession'
-webhook_url = 'https://automation.ezhot.com.br/webhook-test/b80f9336-d2cd-41c0-99c7-05b490b92d68'
+api_id = 35239169
+api_hash = '3fe761963496bc91d06b5c45e6ba01eb'
+session_name = 'EzHot'
+webhook_url = 'https://webhook.ezhot.com.br/webhook/b80f9336-d2cd-41c0-99c7-05b490b92d68'
 
 client = TelegramClient(session_name, api_id, api_hash)
 
@@ -198,7 +198,7 @@ async def send_message(request: SendMessageRequest):
                 )
             
             message = await client.send_message(
-                entity=request.chat_id,
+                entity=request.chat_id, 
                 message=request.text
             )
             
