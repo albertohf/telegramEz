@@ -13,19 +13,22 @@ logging.basicConfig(level=logging.INFO)
 # SUBSTITUA com seus valores
 api_id = 35239169
 api_hash = '3fe761963496bc91d06b5c45e6ba01eb'
-session_name = 'EzHot'
+session_name = 'EzHotpc'
 webhook_url = 'https://webhook.ezhot.com.br/webhook/b80f9336-d2cd-41c0-99c7-05b490b92d68'
 
 client = TelegramClient(session_name, api_id, api_hash)
 
 # Modelo para o endpoint de envio
-class SendMessageRequest(BaseModel):
+class SendTextRequest(BaseModel):
     chat_id: int
-    text: str = None
-    file_path: str = None  # Caminho local do arquivo
-    file_url: str = None   # URL do arquivo para download
-    caption: str = None    # Legenda para mídia
-    voice_note: bool = False  # Se True, envia áudio como mensagem de voz
+    text: str
+
+class SendFileRequest(BaseModel):
+    chat_id: int
+    file_path: str | None = None
+    file_url: str | None = None
+    caption: str | None = None
+    voice_note: bool = False
 
 # Gerenciamento do ciclo de vida do cliente Telegram
 @asynccontextmanager
@@ -143,80 +146,55 @@ async def handler(event):
         logging.error("Erro ao postar no webhook:", exc_info=e)
 
 # Novo endpoint para enviar mensagens (texto, imagem, áudio)
-@app.post("/send-message")
-async def send_message(request: SendMessageRequest):
-    """
-    Envia uma mensagem para um chat específico via Telegram.
-    Suporta texto, imagens, áudios e vídeos.
-    
-    Body JSON:
-    {
-        "chat_id": 123456789,
-        "text": "Sua mensagem aqui",
-        "file_path": "/caminho/para/arquivo.jpg",  // opcional
-        "file_url": "https://exemplo.com/imagem.jpg",  // opcional
-        "caption": "Legenda da imagem",  // opcional
-        "voice_note": false  // true para enviar áudio como mensagem de voz
-    }
-    """
+@app.post("/send-text")
+async def send_message(request: SendTextRequest):
     try:
-        file_to_send = None
-        voice_note = request.voice_note
-        
-        # Se tem arquivo local
-        if request.file_path:
-            file_to_send = request.file_path
-        
-        # Se tem URL de arquivo
-        elif request.file_url:
-            file_to_send = request.file_url
-        
-        # Envia com arquivo (imagem, áudio, vídeo, documento)
-        if file_to_send:
-            message = await client.send_file(
-                entity=request.chat_id,
-                file=file_to_send,
-                caption=request.caption or request.text,
-                voice_note=voice_note
-            )
-            
-            return {
-                "success": True,
-                "message_id": message.id,
-                "chat_id": request.chat_id,
-                "text": request.caption or request.text,
-                "has_media": True,
-                "date": str(message.date)
-            }
-        
-        # Envia apenas texto
-        else:
-            if not request.text:
-                raise HTTPException(
-                    status_code=400,
-                    detail="É necessário fornecer 'text', 'file_path' ou 'file_url'"
-                )
-            
-            message = await client.send_message(
-                entity=request.chat_id, 
-                message=request.text
-            )
-            
-            return {
-                "success": True,
-                "message_id": message.id,
-                "chat_id": request.chat_id,
-                "text": request.text,
-                "has_media": False,
-                "date": str(message.date)
-            }
-    
-    except Exception as e:
-        logging.error(f"Erro ao enviar mensagem: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail=f"Erro ao enviar mensagem: {str(e)}"
+        message = await client.send_message(
+            entity=request.chat_id,
+            message=request.text
         )
+
+        return {
+            "success": True,
+            "message_id": message.id,
+            "chat_id": request.chat_id,
+            "text": request.text,
+            "date": str(message.date)
+        }
+
+    except Exception as e:
+        logging.error(f"Erro ao enviar texto: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/send-file")
+async def send_file_endpoint(request: SendFileRequest):
+    try:
+        file_to_send = request.file_path or request.file_url
+
+        if not file_to_send:
+            raise HTTPException(
+                status_code=400,
+                detail="É necessário fornecer file_path ou file_url"
+            )
+
+        message = await client.send_file(
+            entity=request.chat_id,
+            file=file_to_send,
+            caption=request.caption,
+            voice_note=request.voice_note
+        )
+
+        return {
+            "success": True,
+            "message_id": message.id,
+            "chat_id": request.chat_id,
+            "has_media": True,
+            "date": str(message.date)
+        }
+
+    except Exception as e:
+        logging.error(f"Erro ao enviar arquivo: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Endpoint de health check
 @app.get("/health")
