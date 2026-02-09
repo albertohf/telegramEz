@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from telethon import TelegramClient, events
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+from typing import Optional
 import uvicorn
 
 logging.basicConfig(level=logging.INFO)
@@ -25,9 +26,9 @@ class SendTextRequest(BaseModel):
 
 class SendFileRequest(BaseModel):
     chat_id: int
-    file_path: str | None = None
-    file_url: str | None = None
-    caption: str | None = None
+    file_path: Optional[str] = None
+    file_url: Optional[str] = None
+    caption: Optional[str] = None
     voice_note: bool = False
 
 # Gerenciamento do ciclo de vida do cliente Telegram
