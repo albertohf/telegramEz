@@ -11,9 +11,9 @@ import uvicorn
 logging.basicConfig(level=logging.INFO)
 
 # SUBSTITUA com seus valores
-api_id = 35239169
-api_hash = '3fe761963496bc91d06b5c45e6ba01eb'
-session_name = 'EzHotpc'
+api_id = 30991951
+api_hash = '8fb828b0a409ce60b66cc87806e981f7'
+session_name = 'ezryos'
 webhook_url = 'https://webhook.ezhot.com.br/webhook/b80f9336-d2cd-41c0-99c7-05b490b92d68'
 
 client = TelegramClient(session_name, api_id, api_hash)
