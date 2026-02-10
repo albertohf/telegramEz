@@ -30,6 +30,8 @@ class SendFileRequest(BaseModel):
     file_url: Optional[str] = None
     caption: Optional[str] = None
     voice_note: bool = False
+    video_note: bool = False
+    force_document: bool = False
 
 # Gerenciamento do ciclo de vida do cliente Telegram
 @asynccontextmanager
@@ -182,7 +184,9 @@ async def send_file_endpoint(request: SendFileRequest):
             entity=request.chat_id,
             file=file_to_send,
             caption=request.caption,
-            voice_note=request.voice_note
+            voice_note=request.voice_note,
+            video_note=request.video_note,
+            force_document=request.force_document
         )
 
         return {
